@@ -2,16 +2,19 @@ package com.ansen.webview;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -40,6 +43,10 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private int REQUEST_CODE_SCAN = 2;
     private int REQUEST_CODE_SCAN_GET = 3;//申请相机
+    BroadcastReceiver connectionReceiver;//网络广播
+    private boolean isLoaded = false;//是否已经加载
+    private boolean disConnect = false;//是否断开连接
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,12 +92,50 @@ public class MainActivity extends AppCompatActivity {
         } else {
             webSettings.setLoadsImagesAutomatically(false);
         }
-        //webView.loadUrl("file:///android_asset/test.html");//加载asset文件夹下html
+        int connectedType = NetworkUtil.getConnectedType(MainActivity.this);
+        if (connectedType == -1) {
+            webView.loadUrl("file:///android_asset/index.html");
+        } else {
+            startLoad(webView);
+        }
+        //初始化二维吗扫描
+        ZXingLibrary.initDisplayOpinion(this);
+        //注册网络监听
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(getConnnectionReceiver(), intentFilter);
+    }
+
+    private void startLoad(WebView webView) {
+        isLoaded = true;
         webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
 //        webView.loadUrl("http://120.79.236.139");//加载url
 //        webView.loadUrl("https://wallet.wwec.top");//加载url
+    }
 
-        ZXingLibrary.initDisplayOpinion(this);//初始化二维吗扫描
+    private BroadcastReceiver getConnnectionReceiver() {
+        connectionReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                ConnectivityManager connectMgr = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+                NetworkInfo mobNetInfo = connectMgr.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+                NetworkInfo wifiNetInfo = connectMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+                if (!mobNetInfo.isConnected() && !wifiNetInfo.isConnected()) {
+                    disConnect = true;
+                    Toast.makeText(MainActivity.this, "您的网络已断开", Toast.LENGTH_LONG).show();
+                } else {
+                    if (disConnect) {
+                        disConnect = false;
+                        Toast.makeText(MainActivity.this, "您的网络已恢复", Toast.LENGTH_LONG).show();
+                    }
+                    if (!isLoaded) {
+                        startLoad(webView);
+                    }
+                }
+            }
+        };
+        return connectionReceiver;
     }
 
     @Override
@@ -176,6 +221,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return super.onKeyDown(keyCode, event);
     }
+
     private final class JSInterface {
         /**
          * json = {
@@ -237,6 +283,9 @@ public class MainActivity extends AppCompatActivity {
         //释放资源
         webView.destroy();
         webView = null;
+        if (connectionReceiver != null) {
+            unregisterReceiver(connectionReceiver);
+        }
     }
 
     private boolean checkPermissions() {
