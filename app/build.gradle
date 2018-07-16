@@ -18,11 +18,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         dev {
-            resValue 'string', 'app_name', '万微钱包(国内测试版)'
+            resValue 'string', 'app_name', '万微钱包国'
             applicationIdSuffix '.dev'
         }
         debug {
-            resValue 'string', 'app_name', '万微钱包(内网测试版)'
+            resValue 'string', 'app_name', '万微钱包内'
             applicationIdSuffix '.debug'
         }
     }
@@ -37,7 +37,5 @@ dependencies {
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     testCompile 'junit:junit:4.12'
 
-    //扫不出二维码
-    //compile 'com.github.yuzhiqiang1993:zxing:2.1.8'
     compile 'cn.yipianfengye.android:zxing-library:2.2'
 }
