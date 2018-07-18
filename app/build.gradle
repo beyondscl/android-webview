@@ -8,7 +8,7 @@ android {
         minSdkVersion 19
         targetSdkVersion 26
         versionCode 1
-        versionName "1.1.3"
+        versionName "1.1.4"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -38,4 +38,5 @@ dependencies {
     testCompile 'junit:junit:4.12'
 
     compile 'cn.yipianfengye.android:zxing-library:2.2'
+    compile 'com.github.johnkil.android-progressfragment:progressfragment:1.4.+'
 }

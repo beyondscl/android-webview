@@ -1,7 +1,6 @@
 package com.ansen.webview;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -9,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Binder;
@@ -22,13 +22,13 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.webkit.JavascriptInterface;
-import android.webkit.JsResult;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.uuzuche.lib_zxing.activity.CaptureActivity;
@@ -46,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
     BroadcastReceiver connectionReceiver;//网络广播
     private boolean isLoaded = false;//是否已经加载
     private boolean disConnect = false;//是否断开连接
+    TextView textView = null;//启动webview的进度条
+
 
 
     @Override
@@ -62,6 +64,10 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setWebChromeClient(webChromeClient);
         webView.setWebViewClient(webViewClient);
+
+//        textView = new TextView(webView.getContext());
+//        webView.addView(textView);
+//        new LoadingActivity();
 
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);//允许使用js
@@ -94,7 +100,8 @@ public class MainActivity extends AppCompatActivity {
         }
         int connectedType = NetworkUtil.getConnectedType(MainActivity.this);
         if (connectedType == -1) {
-            webView.loadUrl("file:///android_asset/index.html");
+//            webView.loadUrl("file:///android_asset/index.html");
+            webView.setBackgroundResource(R.drawable.disconnnect);
         } else {
             startLoad(webView);
         }
@@ -108,8 +115,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void startLoad(WebView webView) {
         isLoaded = true;
-        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
-//        webView.loadUrl("http://120.79.236.139");//加载url
+//        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
+        webView.loadUrl("http://120.79.236.139");//加载url
 //        webView.loadUrl("https://wallet.wwec.top");//加载url
     }
 
@@ -173,7 +180,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageFinished(WebView view, String url) {//页面加载完成
             progressBar.setVisibility(View.GONE);
-            webView.setBackgroundResource(0);
+//            webView.setBackgroundResource(0);
+            webView.setBackgroundColor(Color.parseColor("#000000")); //ok 不会闪黑屏
         }
 
         @Override
@@ -188,27 +196,14 @@ public class MainActivity extends AppCompatActivity {
     };
     //WebChromeClient主要辅助WebView处理Javascript的对话框、网站图标、网站title、加载进度等
     private WebChromeClient webChromeClient = new WebChromeClient() {
-        //不支持js的alert弹窗，需要自己监听然后通过dialog弹窗
-        @Override
-        public boolean onJsAlert(WebView webView, String url, String message, JsResult result) {
-            AlertDialog.Builder localBuilder = new AlertDialog.Builder(webView.getContext());
-            localBuilder.setMessage(message).setPositiveButton("确定", null);
-            localBuilder.setCancelable(false);
-            localBuilder.create().show();
-            result.confirm();//必须
-            return true;
-        }
-
-        //获取网页标题
-        @Override
-        public void onReceivedTitle(WebView view, String title) {
-            super.onReceivedTitle(view, title);
-        }
-
-        //加载进度回调
         @Override
         public void onProgressChanged(WebView view, int newProgress) {
-            progressBar.setProgress(newProgress);
+//            progressBar.setProgress(newProgress);
+            if(newProgress<100){
+//                textView.setText("正在检查更新:"+String.valueOf(newProgress)+"%");
+            }else{
+//                webView.removeView(textView);
+            }
         }
     };
 
