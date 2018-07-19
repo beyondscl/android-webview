@@ -41,14 +41,14 @@ import org.json.JSONObject;
 public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private ProgressBar progressBar;
+    private TextView processTitle;
+    private String processTitleText;
     private int REQUEST_CODE_SCAN = 2;
     private int REQUEST_CODE_SCAN_GET = 3;//申请相机
     BroadcastReceiver connectionReceiver;//网络广播
     private boolean isLoaded = false;//是否已经加载
     private boolean disConnect = false;//是否断开连接
-    TextView textView = null;//启动webview的进度条
-
-
+    private int quitCount = 1;//5秒内点击2次推出
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,17 +57,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         progressBar = findViewById(R.id.progressbar);//进度条
+        processTitle = findViewById(R.id.processTitle);//进度条
+        processTitle.setText(R.string.load_title);
         webView = findViewById(R.id.webview);
-
         webView.setBackgroundColor(0);
         webView.setBackgroundResource(R.drawable.start);
 
         webView.setWebChromeClient(webChromeClient);
         webView.setWebViewClient(webViewClient);
-
-//        textView = new TextView(webView.getContext());
-//        webView.addView(textView);
-//        new LoadingActivity();
 
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);//允许使用js
@@ -100,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
         }
         int connectedType = NetworkUtil.getConnectedType(MainActivity.this);
         if (connectedType == -1) {
-//            webView.loadUrl("file:///android_asset/index.html");
+            //webView.loadUrl("file:///android_asset/index.html");
             webView.setBackgroundResource(R.drawable.disconnnect);
         } else {
             startLoad(webView);
@@ -115,8 +112,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void startLoad(WebView webView) {
         isLoaded = true;
-//        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
-        webView.loadUrl("http://120.79.236.139");//加载url
+        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
+//        webView.loadUrl("http://120.79.236.139");//加载url
 //        webView.loadUrl("https://wallet.wwec.top");//加载url
     }
 
@@ -130,11 +127,11 @@ public class MainActivity extends AppCompatActivity {
 
                 if (!mobNetInfo.isConnected() && !wifiNetInfo.isConnected()) {
                     disConnect = true;
-                    Toast.makeText(MainActivity.this, "您的网络已断开", Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, R.string.net_disconnect, Toast.LENGTH_LONG).show();
                 } else {
                     if (disConnect) {
                         disConnect = false;
-                        Toast.makeText(MainActivity.this, "您的网络已恢复", Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, R.string.net_connect, Toast.LENGTH_LONG).show();
                     }
                     if (!isLoaded) {
                         startLoad(webView);
@@ -166,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 } else if (bundle.getInt(CodeUtils.RESULT_TYPE) == CodeUtils.RESULT_FAILED) {
-                    Toast.makeText(MainActivity.this, "解析二维码失败", Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, R.string.msg_ewm, Toast.LENGTH_LONG).show();
                 }
             }
         }
@@ -180,13 +177,14 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageFinished(WebView view, String url) {//页面加载完成
             progressBar.setVisibility(View.GONE);
-//            webView.setBackgroundResource(0);
-            webView.setBackgroundColor(Color.parseColor("#000000")); //ok 不会闪黑屏
+            processTitle.setVisibility(View.GONE);
+            webView.setBackgroundResource(0);
+            webView.setBackgroundColor(Color.parseColor("#ffffff")); //ok 不会闪黑屏
         }
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {//页面开始加载
-            progressBar.setVisibility(View.INVISIBLE);
+
         }
 
         @Override
@@ -198,21 +196,29 @@ public class MainActivity extends AppCompatActivity {
     private WebChromeClient webChromeClient = new WebChromeClient() {
         @Override
         public void onProgressChanged(WebView view, int newProgress) {
-//            progressBar.setProgress(newProgress);
-            if(newProgress<100){
-//                textView.setText("正在检查更新:"+String.valueOf(newProgress)+"%");
-            }else{
-//                webView.removeView(textView);
+            if (newProgress < 100) {
+                processTitle.setText(processTitle.getText().toString().split(":")[0] + ": " + newProgress);
             }
         }
     };
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        Log.i("ansen", "是否有上一个页面:" + webView.canGoBack());
-        if (webView.canGoBack() && keyCode == KeyEvent.KEYCODE_BACK) {//点击返回按钮的时候判断有没有上一页
-            webView.goBack(); // goBack()表示返回webView的上一页面
-            return true;
+        if (quitCount == 1) {
+            quitCount++;
+            Toast.makeText(MainActivity.this, R.string.msg_quit, Toast.LENGTH_SHORT).show();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(8000);//5秒后重置
+                        quitCount = 1;
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+            return false;
         }
         return super.onKeyDown(keyCode, event);
     }
@@ -275,12 +281,25 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        //释放资源
         webView.destroy();
         webView = null;
         if (connectionReceiver != null) {
             unregisterReceiver(connectionReceiver);
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        webView.onPause();
+        webView.pauseTimers();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        webView.resumeTimers();
+        webView.onResume();
     }
 
     private boolean checkPermissions() {

@@ -1,3 +1,10 @@
 <resources>
     <!--<string name="app_name">万微钱包</string>-->
+    <string name="msg_quit">再次点击退出钱包</string>
+    <string name="load_title">正在加载:</string>
+    <string name="msg_ewm">解析二维码失败</string>
+    <string name="net_disconnect">您的网络已断开</string>
+    <string name="net_connect">您的网络已恢复</string>
+
 </resources>
+

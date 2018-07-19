@@ -6,15 +6,28 @@
 
     <WebView
         android:id="@+id/webview"
+        android:layerType="software"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent">
+
+    </WebView>
 
     <ProgressBar
         android:id="@+id/progressbar"
-        style="@android:style/Widget.ProgressBar.Horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="3dip"
-        android:max="100"
-        android:progress="0"
-        android:visibility="gone"/>
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:indeterminateBehavior="repeat"
+        android:indeterminateDrawable="@drawable/anim" />
+
+    <TextView
+        android:id="@+id/processTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:textColor="@color/colorWhite"
+        android:layout_marginTop="45dp"/>
+
+
 </FrameLayout>
