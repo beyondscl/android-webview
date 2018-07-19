@@ -5,6 +5,7 @@
     <string name="msg_ewm">解析二维码失败</string>
     <string name="net_disconnect">您的网络已断开</string>
     <string name="net_connect">您的网络已恢复</string>
+    <string name="update_version">0</string>
 
 </resources>
 

@@ -4,11 +4,12 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
+    <!--关闭硬件加速fps将会很慢-->
     <WebView
         android:id="@+id/webview"
-        android:layerType="software"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:hardwareAccelerated="true">
 
     </WebView>
 

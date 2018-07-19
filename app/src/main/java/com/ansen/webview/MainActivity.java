@@ -1,6 +1,7 @@
 package com.ansen.webview;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.content.BroadcastReceiver;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -24,6 +25,8 @@ import android.view.Window;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -42,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private ProgressBar progressBar;
     private TextView processTitle;
-    private String processTitleText;
     private int REQUEST_CODE_SCAN = 2;
     private int REQUEST_CODE_SCAN_GET = 3;//申请相机
     BroadcastReceiver connectionReceiver;//网络广播
@@ -57,11 +59,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         progressBar = findViewById(R.id.progressbar);//进度条
-        processTitle = findViewById(R.id.processTitle);//进度条
+        processTitle = findViewById(R.id.processTitle);//进度文本域
         processTitle.setText(R.string.load_title);
         webView = findViewById(R.id.webview);
         webView.setBackgroundColor(0);
         webView.setBackgroundResource(R.drawable.start);
+//        webView.setLayerType(View.LAYER_TYPE_HARDWARE,null);
 
         webView.setWebChromeClient(webChromeClient);
         webView.setWebViewClient(webViewClient);
@@ -84,12 +87,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setDatabasePath(MainActivity.this.getApplicationContext().getCacheDir().getAbsolutePath());
         webView.addJavascriptInterface(new JSInterface(), "Bridge");//启用交互
 
-        /**
-         * LOAD_CACHE_ONLY: 不使用网络，只读取本地缓存数据
-         * LOAD_DEFAULT: （默认）根据cache-control决定是否从网络上取数据。
-         * LOAD_NO_CACHE: 不使用缓存，只从网络获取数据.
-         * LOAD_CACHE_ELSE_NETWORK，只要本地有，无论是否过期，或者no-cache，都使用缓存中的数据。
-         */
+
         if (Build.VERSION.SDK_INT >= 19) {
             webSettings.setLoadsImagesAutomatically(true);
         } else {
@@ -97,9 +95,14 @@ public class MainActivity extends AppCompatActivity {
         }
         int connectedType = NetworkUtil.getConnectedType(MainActivity.this);
         if (connectedType == -1) {
-            //webView.loadUrl("file:///android_asset/index.html");
             webView.setBackgroundResource(R.drawable.disconnnect);
         } else {
+//检查更新,用异步
+//            if (Util.checkVersion()) {//有更新
+//                webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);//更新
+//            } else {
+//                webSettings.setCacheMode(WebSettings.LOAD_CACHE_ONLY);//只是用本地
+//            }
             startLoad(webView);
         }
         //初始化二维吗扫描
@@ -130,6 +133,8 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, R.string.net_disconnect, Toast.LENGTH_LONG).show();
                 } else {
                     if (disConnect) {
+                        webView.setBackgroundResource(0);
+                        webView.setBackgroundColor(Color.parseColor("#ffffff"));
                         disConnect = false;
                         Toast.makeText(MainActivity.this, R.string.net_connect, Toast.LENGTH_LONG).show();
                     }
@@ -179,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setVisibility(View.GONE);
             processTitle.setVisibility(View.GONE);
             webView.setBackgroundResource(0);
-            webView.setBackgroundColor(Color.parseColor("#ffffff")); //ok 不会闪黑屏
+            webView.setBackgroundColor(Color.parseColor("#ffffff"));
         }
 
         @Override
@@ -191,6 +196,18 @@ public class MainActivity extends AppCompatActivity {
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             return super.shouldOverrideUrlLoading(view, url);
         }
+
+        @TargetApi(android.os.Build.VERSION_CODES.M)
+        @Override
+        public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+            super.onReceivedHttpError(view, request, errorResponse);
+            // 这个方法在6.0才出现
+            int statusCode = errorResponse.getStatusCode();
+            System.out.println("onReceivedHttpError code = " + statusCode);
+            if (404 == statusCode || 500 == statusCode) {
+                //webView.setBackgroundResource(R.drawable.disconnnect);
+            }
+        }
     };
     //WebChromeClient主要辅助WebView处理Javascript的对话框、网站图标、网站title、加载进度等
     private WebChromeClient webChromeClient = new WebChromeClient() {
@@ -198,6 +215,17 @@ public class MainActivity extends AppCompatActivity {
         public void onProgressChanged(WebView view, int newProgress) {
             if (newProgress < 100) {
                 processTitle.setText(processTitle.getText().toString().split(":")[0] + ": " + newProgress);
+            }
+        }
+
+        @Override
+        public void onReceivedTitle(WebView view, String title) {
+            super.onReceivedTitle(view, title);
+            // android 6.0 以下通过title获取
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                if (title.contains("404") || title.contains("500") || title.contains("Error")) {
+                    //webView.setBackgroundResource(R.drawable.disconnnect);
+                }
             }
         }
     };
@@ -211,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     try {
-                        Thread.sleep(8000);//5秒后重置
+                        Thread.sleep(8000);//重置
                         quitCount = 1;
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -249,6 +277,9 @@ public class MainActivity extends AppCompatActivity {
                     }
                     Intent intent = new Intent(MainActivity.this, CaptureActivity.class);
                     startActivityForResult(intent, REQUEST_CODE_SCAN);
+                } else if (type == 3) {
+                    // 不去掉背景，fps只有10左右。
+                    //webView.setBackgroundColor(Color.parseColor("#ffffff")); //ok 不会闪黑屏
                 }
             } catch (JSONException e) {
                 e.printStackTrace();

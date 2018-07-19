@@ -18,11 +18,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         dev {
-            resValue 'string', 'app_name', '万微钱包国'
+            resValue 'string', 'app_name', 'DEV'
             applicationIdSuffix '.dev'
         }
         debug {
-            resValue 'string', 'app_name', '万微钱包内'
+            resValue 'string', 'app_name', 'DEBUG'
             applicationIdSuffix '.debug'
         }
     }
@@ -38,5 +38,6 @@ dependencies {
     testCompile 'junit:junit:4.12'
 
     compile 'cn.yipianfengye.android:zxing-library:2.2'
-    compile 'com.github.johnkil.android-progressfragment:progressfragment:1.4.+'
+    //compile 'com.github.johnkil.android-progressfragment:progressfragment:1.4.+'
+    compile 'com.squareup.okhttp3:okhttp:3.6.0'
 }
