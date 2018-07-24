@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
         //第一次创建版本信息,有那么必定有缓存
         if (isFirstEnter) {
             processTitle.setText(R.string.first_enter);
-            Util.createFile(path);
+            Util.createFile(MainActivity.this, path);
         }
         webView = findViewById(R.id.webview);
         showBg();
@@ -128,8 +128,8 @@ public class MainActivity extends AppCompatActivity {
         isLoadDisconn = false;
 //        webView.loadUrl("file:///android_asset/release/index.html");//加载本地
 //        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
-//        webView.loadUrl("http://120.79.236.139");//加载url
-        webView.loadUrl("https://wallet.wwec.top");//加载url
+        webView.loadUrl("http://120.79.236.139");//加载url
+//        webView.loadUrl("https://wallet.wwec.top");//加载url
     }
 
     private BroadcastReceiver getConnnectionReceiver() {

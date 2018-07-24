@@ -33,25 +33,68 @@ public class Util {
     private static final String TAG = "FileUtils";
     private static String fileName = "wwec_version.txt";
     //    private static String path = Environment.getExternalStorageDirectory().getPath() + "/";//动态写入文件，用于更新
-
+    private static String versionUrl = "http://120.79.236.139/user/getVersion";
 
     /**
      * 创建文件
      */
-    public static boolean createFile(String path) {
+    public static boolean createFile(Context context, String path) {
+        if (!isExternalStorageWritable()) {
+            return false;
+        }
         String strFilePath = path + fileName;
         File file = new File(strFilePath);
         if (!file.exists()) {
             try {
                 boolean f = file.createNewFile();
-                Log.e(TAG,file.exists()+"");
-                if (f)
+                Log.e(TAG, file.exists() + "");
+                if (f) {
+                    startSetVersion(context, path);
                     return true;
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         return false;
+    }
+
+    /**
+     * 第一次进入开始更新版本号
+     */
+    private static void startSetVersion(Context context, final String path) {
+        if (!NetworkUtil.isAvilabel(context)) {
+            Log.e("network", "network is not available");
+            return;
+        }
+        try {
+            OkHttpClient client = new OkHttpClient();
+            final Request request = new Request.Builder()
+                    .url(versionUrl)
+                    .get()
+                    .build();
+            Call call = client.newCall(request);
+            call.enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    e.printStackTrace();
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    final String maxVersion;
+                    try {
+                        maxVersion = new JSONObject(new JSONObject(response.body().string()).getString("retMsg")).getString("msg");
+                        Util.modifyFile(path, maxVersion);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -145,7 +188,7 @@ public class Util {
         try {
             OkHttpClient client = new OkHttpClient();
             final Request request = new Request.Builder()
-                    .url(UpdateInter.versionUrl)
+                    .url(versionUrl)
                     .get()
                     .build();
             Call call = client.newCall(request);
@@ -160,6 +203,10 @@ public class Util {
                     final String maxVersion;
                     try {
                         maxVersion = new JSONObject(new JSONObject(response.body().string()).getString("retMsg")).getString("msg");
+                        if ("".equals(getVersion(path))) {
+                            Util.modifyFile(path, maxVersion);
+                            return;
+                        }
                         if (!maxVersion.equals(getVersion(path))) {
                             Map v = new HashMap<String, String>();
                             v.put("type", 1);//标识哪个请求
