@@ -54,4 +54,8 @@ public class NetworkUtil {
         }
         return -1;
     }
+
+    public static boolean isAvilabel(Context context) {
+        return getConnectedType(context) != -1;
+    }
 }

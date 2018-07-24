@@ -15,6 +15,8 @@ import android.net.NetworkInfo;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
@@ -41,83 +43,93 @@ import com.uuzuche.lib_zxing.activity.ZXingLibrary;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Map;
+
 public class MainActivity extends AppCompatActivity {
     private WebView webView;
+    private WebSettings webSettings;
     private ProgressBar progressBar;
     private TextView processTitle;
     private int REQUEST_CODE_SCAN = 2;
     private int REQUEST_CODE_SCAN_GET = 3;//申请相机
     BroadcastReceiver connectionReceiver;//网络广播
-    private boolean isLoaded = false;//是否已经加载
+    private boolean isLoaded = false;//是否已经加载,第一次断网进入，重新加载
     private boolean disConnect = false;//是否断开连接
     private int quitCount = 1;//5秒内点击2次推出
+    private boolean isLoadDisconn = false;//是否标识加载disconnect图片，这个必定成功
+    private boolean isFirstEnter = false;//是否第一次进入app
+    private String path = null;//文件存储地址
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);//去掉顶部标题栏
+        //去掉顶部标题栏
+        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
-
-        progressBar = findViewById(R.id.progressbar);//进度条
-        processTitle = findViewById(R.id.processTitle);//进度文本域
+        //版本信息存储地址，与app同生共死
+        path = this.getApplicationContext().getCacheDir().getAbsolutePath() + "/";
+        //进度条
+        progressBar = findViewById(R.id.progressbar);
+        //进度条文本
+        processTitle = findViewById(R.id.processTitle);
         processTitle.setText(R.string.load_title);
+        isFirstEnter = Util.isFirstEnter(path);
+        //第一次创建版本信息,有那么必定有缓存
+        if (isFirstEnter) {
+            processTitle.setText(R.string.first_enter);
+            Util.createFile(path);
+        }
         webView = findViewById(R.id.webview);
-        webView.setBackgroundColor(0);
-        webView.setBackgroundResource(R.drawable.start);
-//        webView.setLayerType(View.LAYER_TYPE_HARDWARE,null);
-
-        webView.setWebChromeClient(webChromeClient);
-        webView.setWebViewClient(webViewClient);
-
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);//允许使用js
-        webSettings.setUseWideViewPort(true); //将图片调整到适合webview的大小
-        webSettings.setLoadWithOverviewMode(true); // 缩放至屏幕的大小
-        webSettings.setLoadsImagesAutomatically(true); //支持自动加载图片
-        webSettings.setDefaultTextEncodingName("utf-8");//设置编码格式
-        webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);//LOAD_NO_CACHE不使用缓存，只从网络获取数据.
-        //总结：根据以上两种模式，建议缓存策略为，判断是否有网络，有的话，使用LOAD_DEFAULT，无网络时，使用LOAD_CACHE_ELSE_NETWORK。
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setAllowContentAccess(false);
-        webSettings.setAllowFileAccess(false);
-        //启用local storage存储
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setDatabaseEnabled(true);
-        webSettings.setDatabasePath(MainActivity.this.getApplicationContext().getCacheDir().getAbsolutePath());
-        webView.addJavascriptInterface(new JSInterface(), "Bridge");//启用交互
-
-
-        if (Build.VERSION.SDK_INT >= 19) {
-            webSettings.setLoadsImagesAutomatically(true);
-        } else {
-            webSettings.setLoadsImagesAutomatically(false);
-        }
-        int connectedType = NetworkUtil.getConnectedType(MainActivity.this);
-        if (connectedType == -1) {
-            webView.setBackgroundResource(R.drawable.disconnnect);
-        } else {
-//检查更新,用异步
-//            if (Util.checkVersion()) {//有更新
-//                webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);//更新
-//            } else {
-//                webSettings.setCacheMode(WebSettings.LOAD_CACHE_ONLY);//只是用本地
-//            }
-            startLoad(webView);
-        }
+        showBg();
+        //核心设置
+        webView = Webset.webSet(MainActivity.this, webView, webChromeClient, webViewClient, MainActivity.this.getApplicationContext().getCacheDir().getAbsolutePath(), isFirstEnter);
+        webSettings = webView.getSettings();
+        //启用交互
+        webView.addJavascriptInterface(new JSInterface(), "Bridge");
         //初始化二维吗扫描
         ZXingLibrary.initDisplayOpinion(this);
         //注册网络监听
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
         registerReceiver(getConnnectionReceiver(), intentFilter);
+        //监听网络变化
+        startLoad(webView);
+        final Handler updateHandler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                final Map map = (Map) msg.obj;
+                if (Integer.valueOf(map.get("type").toString()) == 1) {
+                    final String version = map.get("version").toString();
+                    Util.showNormalDialog(MainActivity.this, new UpdateInter() {
+                        @Override
+                        public void reload() {
+                            Util.modifyFile(path, version);
+                            webSettings.setCacheMode(webSettings.LOAD_NO_CACHE);
+                            processTitle.setText(R.string.update_title);
+                            startLoad(webView);
+                        }
+                    });
+                }
+            }
+        };
+        //检查更新
+        if (!isFirstEnter) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Util.checkVersion(MainActivity.this, webSettings, updateHandler, path);
+                }
+            }).start();
+        }
     }
 
     private void startLoad(WebView webView) {
         isLoaded = true;
-        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
+        isLoadDisconn = false;
+//        webView.loadUrl("file:///android_asset/release/index.html");//加载本地
+//        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
 //        webView.loadUrl("http://120.79.236.139");//加载url
-//        webView.loadUrl("https://wallet.wwec.top");//加载url
+        webView.loadUrl("https://wallet.wwec.top");//加载url
     }
 
     private BroadcastReceiver getConnnectionReceiver() {
@@ -133,12 +145,13 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, R.string.net_disconnect, Toast.LENGTH_LONG).show();
                 } else {
                     if (disConnect) {
-                        webView.setBackgroundResource(0);
-                        webView.setBackgroundColor(Color.parseColor("#ffffff"));
                         disConnect = false;
                         Toast.makeText(MainActivity.this, R.string.net_connect, Toast.LENGTH_LONG).show();
                     }
                     if (!isLoaded) {
+                        if (isFirstEnter) {//第一次无网进入，需要加载远程
+                            webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+                        }
                         startLoad(webView);
                     }
                 }
@@ -181,15 +194,12 @@ public class MainActivity extends AppCompatActivity {
     private WebViewClient webViewClient = new WebViewClient() {
         @Override
         public void onPageFinished(WebView view, String url) {//页面加载完成
-            progressBar.setVisibility(View.GONE);
-            processTitle.setVisibility(View.GONE);
-            webView.setBackgroundResource(0);
-            webView.setBackgroundColor(Color.parseColor("#ffffff"));
+            clearBg();
         }
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {//页面开始加载
-
+            showBg();
         }
 
         @Override
@@ -203,9 +213,8 @@ public class MainActivity extends AppCompatActivity {
             super.onReceivedHttpError(view, request, errorResponse);
             // 这个方法在6.0才出现
             int statusCode = errorResponse.getStatusCode();
-            System.out.println("onReceivedHttpError code = " + statusCode);
             if (404 == statusCode || 500 == statusCode) {
-                //webView.setBackgroundResource(R.drawable.disconnnect);
+                startLoad(webView);
             }
         }
     };
@@ -214,7 +223,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onProgressChanged(WebView view, int newProgress) {
             if (newProgress < 100) {
-                processTitle.setText(processTitle.getText().toString().split(":")[0] + ": " + newProgress);
+                processTitle.setText(processTitle.getText().toString().split(":")[0] + ": " + newProgress + "%");
             }
         }
 
@@ -223,8 +232,8 @@ public class MainActivity extends AppCompatActivity {
             super.onReceivedTitle(view, title);
             // android 6.0 以下通过title获取
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-                if (title.contains("404") || title.contains("500") || title.contains("Error")) {
-                    //webView.setBackgroundResource(R.drawable.disconnnect);
+                if (title.contains("404") || title.contains("500") || title.contains("Error") || title.contains("网页无法打开")) {
+                    setDisConn();
                 }
             }
         }
@@ -360,4 +369,33 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void clearBg() {
+        progressBar.setVisibility(View.INVISIBLE);
+        processTitle.setVisibility(View.INVISIBLE);
+        webView.setBackgroundResource(0);
+        webView.setBackgroundColor(Color.parseColor("#ffffff"));
+        if (isLoadDisconn) {
+            setReConn();
+        }
+    }
+
+    private void showBg() {
+        progressBar.setVisibility(View.VISIBLE);
+        processTitle.setVisibility(View.VISIBLE);
+        webView.setBackgroundColor(0);
+        webView.setBackgroundResource(R.drawable.start);
+    }
+
+    private void setReConn() {
+        progressBar.setVisibility(View.VISIBLE);
+        processTitle.setVisibility(View.VISIBLE);
+        processTitle.setText(R.string.wait_net);
+        processTitle.setTextColor(Color.BLACK);
+    }
+
+    private void setDisConn() {
+        isLoaded = false;
+        isLoadDisconn = true;
+        webView.loadUrl("file:///android_asset/imgs/disconnnect.png");
+    }
 }
