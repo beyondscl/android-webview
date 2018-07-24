@@ -53,8 +53,6 @@ public class MainActivity extends AppCompatActivity {
     private int REQUEST_CODE_SCAN = 2;
     private int REQUEST_CODE_SCAN_GET = 3;//申请相机
     BroadcastReceiver connectionReceiver;//网络广播
-    private boolean isLoaded = false;//是否已经加载,第一次断网进入，重新加载
-    private boolean disConnect = false;//是否断开连接
     private int quitCount = 1;//5秒内点击2次推出
     private boolean isLoadDisconn = false;//是否标识加载disconnect图片，这个必定成功
     private boolean isFirstEnter = false;//是否第一次进入app
@@ -73,12 +71,6 @@ public class MainActivity extends AppCompatActivity {
         //进度条文本
         processTitle = findViewById(R.id.processTitle);
         processTitle.setText(R.string.load_title);
-        isFirstEnter = Util.isFirstEnter(path);
-        //第一次创建版本信息,有那么必定有缓存
-        if (isFirstEnter) {
-            processTitle.setText(R.string.first_enter);
-            Util.createFile(MainActivity.this, path);
-        }
         webView = findViewById(R.id.webview);
         showBg();
         //核心设置
@@ -91,8 +83,8 @@ public class MainActivity extends AppCompatActivity {
         //注册网络监听
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        registerReceiver(getConnnectionReceiver(), intentFilter);
         //监听网络变化
+        registerReceiver(getConnnectionReceiver(), intentFilter);
         startLoad(webView);
         final Handler updateHandler = new Handler() {
             @Override
@@ -117,19 +109,14 @@ public class MainActivity extends AppCompatActivity {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    Util.checkVersion(MainActivity.this, webSettings, updateHandler, path);
+                    //Util.checkVersion(MainActivity.this, webSettings, updateHandler, path);
                 }
             }).start();
         }
     }
 
     private void startLoad(WebView webView) {
-        isLoaded = true;
-        isLoadDisconn = false;
-//        webView.loadUrl("file:///android_asset/release/index.html");//加载本地
-//        webView.loadUrl("http://192.168.2.113:8080/wwwallet/index.html");//加载url
-        webView.loadUrl("http://120.79.236.139");//加载url
-//        webView.loadUrl("https://wallet.wwec.top");//加载url
+        webView.loadUrl("file:///android_asset/release/index.html");//加载本地
     }
 
     private BroadcastReceiver getConnnectionReceiver() {
@@ -141,19 +128,9 @@ public class MainActivity extends AppCompatActivity {
                 NetworkInfo wifiNetInfo = connectMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 
                 if (!mobNetInfo.isConnected() && !wifiNetInfo.isConnected()) {
-                    disConnect = true;
                     Toast.makeText(MainActivity.this, R.string.net_disconnect, Toast.LENGTH_LONG).show();
                 } else {
-                    if (disConnect) {
-                        disConnect = false;
                         Toast.makeText(MainActivity.this, R.string.net_connect, Toast.LENGTH_LONG).show();
-                    }
-                    if (!isLoaded) {
-                        if (isFirstEnter) {//第一次无网进入，需要加载远程
-                            webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-                        }
-                        startLoad(webView);
-                    }
                 }
             }
         };
@@ -211,11 +188,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
             super.onReceivedHttpError(view, request, errorResponse);
-            // 这个方法在6.0才出现
-            int statusCode = errorResponse.getStatusCode();
-            if (404 == statusCode || 500 == statusCode) {
-                startLoad(webView);
-            }
         }
     };
     //WebChromeClient主要辅助WebView处理Javascript的对话框、网站图标、网站title、加载进度等
@@ -230,12 +202,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceivedTitle(WebView view, String title) {
             super.onReceivedTitle(view, title);
-            // android 6.0 以下通过title获取
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-                if (title.contains("404") || title.contains("500") || title.contains("Error") || title.contains("网页无法打开")) {
-                    setDisConn();
-                }
-            }
         }
     };
 
@@ -391,11 +357,5 @@ public class MainActivity extends AppCompatActivity {
         processTitle.setVisibility(View.VISIBLE);
         processTitle.setText(R.string.wait_net);
         processTitle.setTextColor(Color.BLACK);
-    }
-
-    private void setDisConn() {
-        isLoaded = false;
-        isLoadDisconn = true;
-        webView.loadUrl("file:///android_asset/imgs/disconnnect.png");
     }
 }

@@ -23,11 +23,7 @@ public class Webset {
         webSettings.setDefaultTextEncodingName("utf-8");//设置编码格式
         //先加载本地呈现给用户，在后台更新是否需要更新提示用户
         //检查有没有version，确定是否是第一次使用
-        if (!hasVersionFile) {//不是
-            webSettings.setCacheMode(WebSettings.LOAD_CACHE_ONLY);//先加载缓存
-        } else {//是
-            webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);//LOAD_NO_CACHE 不使用缓存，只从网络获取数据;
-        }
+        webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);//LOAD_NO_CACHE 不使用缓存，只从网络获取数据;
         //总结：根据以上两种模式，建议缓存策略为，判断是否有网络，有的话，使用LOAD_DEFAULT，无网络时，使用LOAD_CACHE_ELSE_NETWORK。
         webSettings.setSupportZoom(true);
         webSettings.setBuiltInZoomControls(true);
@@ -36,6 +32,7 @@ public class Webset {
         //启用local storage存储
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
+        //支持本地项目异步file协议
         try {
             if (Build.VERSION.SDK_INT >= 16) {
                 Class<?> clazz = webView.getSettings().getClass();
