@@ -10,10 +10,17 @@ android {
         versionCode 2
         versionName "2.0.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        defaultConfig {
+            ndk {
+                // 设置支持的SO库架构
+                abiFilters 'armeabi-v7a', 'arm64-v8a','armeabi' , 'x86',  'x86_64'
+            }
+        }
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             resValue 'string', 'app_name', '万微钱包'
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -38,6 +45,8 @@ dependencies {
     testCompile 'junit:junit:4.12'
 
     compile 'cn.yipianfengye.android:zxing-library:2.2'
-    //compile 'com.github.johnkil.android-progressfragment:progressfragment:1.4.+'
     compile 'com.squareup.okhttp3:okhttp:3.6.0'
+    compile 'com.tencent.bugly:crashreport_upgrade:latest.release'
+    compile 'com.tencent.bugly:nativecrashreport:latest.release'
+
 }
