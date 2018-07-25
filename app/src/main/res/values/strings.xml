@@ -4,7 +4,7 @@
     <string name="load_title">正在加载:</string>
     <string name="msg_ewm">解析二维码失败</string>
     <string name="net_disconnect">您的网络已断开</string>
-    <string name="net_connect">您的网络已恢复</string>
+    <string name="net_connect">网络已链接</string>
     <string name="wait_net">正在尝试重新加载...</string>
     <string name="first_enter">正在初始化数据，请您耐心等待:</string>
     <string name="update_title">正在更新，请您耐心等待:</string>

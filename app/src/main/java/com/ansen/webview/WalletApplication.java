@@ -1,7 +1,9 @@
 package com.ansen.webview;
 
 import android.app.Application;
+import android.content.Context;
 import android.os.Environment;
+import android.support.multidex.MultiDex;
 
 import com.tencent.bugly.Bugly;
 import com.tencent.bugly.beta.Beta;
@@ -27,7 +29,7 @@ public class WalletApplication extends Application {
         Beta.autoCheckUpgrade = true;
 
         /**
-         * 设置升级周期为60s（默认检查周期为0s），60s内SDK不重复向后天请求策略
+         * 设置升级周期为60s（默认检查周期为0s），60s内SDK不重复向后台请求策略
          */
         Beta.initDelay = 1 * 1000;
 
@@ -79,5 +81,13 @@ public class WalletApplication extends Application {
         //  Beta.canShowUpgradeActs.add(MainActivity.class);
         // 不在登录activity上显示弹窗
         //Beta.canNotShowUpgradeActs.add(MainActivity.class);
+    }
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+        // you must install multiDex whatever tinker is installed!
+        MultiDex.install(base);
+        // 安装tinker
+        Beta.installTinker();
     }
 }
