@@ -14,8 +14,8 @@ public class WalletApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-        Bugly.init(getApplicationContext(), "f1b80e426b", false);
-        Beta.checkUpgrade(false,false);
+        Bugly.init(getApplicationContext(), "b8696a1087", false);
+        Beta.checkUpgrade(false, false);
         /**
          * true表示app启动自动初始化升级模块；
          * false不自动初始化
@@ -82,6 +82,7 @@ public class WalletApplication extends Application {
         // 不在登录activity上显示弹窗
         //Beta.canNotShowUpgradeActs.add(MainActivity.class);
     }
+
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);

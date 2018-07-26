@@ -8,7 +8,14 @@
     <string name="wait_net">正在尝试重新加载...</string>
     <string name="first_enter">正在初始化数据，请您耐心等待:</string>
     <string name="update_title">正在更新，请您耐心等待:</string>
-    <string name="update_version">0</string>
+    <!--权限-->
+    <string name="PERMISSION_REQUIRE">申请权限</string>
+    <string name="PERMISSION_SCAN">扫一扫功能需要相机权限</string>
+    <string name="PERMISSION_SD_INFO">存储权限仅用于应用更新与数据存储,拒绝可能导致应用无法正常使用!</string>
+    <string name="PERMISSION_SET_AGAIN1">您可以在设置中开启存储权限</string>
+    <string name="PERMISSION_SET_AGAIN2">您可以在设置中开启相机权限</string>
+    <string name="AGREEE">同意</string>
+    <string name="REJECT">拒绝</string>
 
 </resources>
 

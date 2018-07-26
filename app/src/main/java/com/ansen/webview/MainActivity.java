@@ -2,9 +2,11 @@ package com.ansen.webview;
 
 import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -12,13 +14,10 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.PermissionChecker;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -36,9 +35,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.tencent.bugly.Bugly;
-import com.tencent.bugly.beta.Beta;
-import com.tencent.bugly.crashreport.CrashReport;
 import com.uuzuche.lib_zxing.activity.CaptureActivity;
 import com.uuzuche.lib_zxing.activity.CodeUtils;
 import com.uuzuche.lib_zxing.activity.ZXingLibrary;
@@ -46,20 +42,27 @@ import com.uuzuche.lib_zxing.activity.ZXingLibrary;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Map;
+import permissions.dispatcher.NeedsPermission;
+import permissions.dispatcher.OnNeverAskAgain;
+import permissions.dispatcher.OnPermissionDenied;
+import permissions.dispatcher.OnShowRationale;
+import permissions.dispatcher.PermissionRequest;
+import permissions.dispatcher.RuntimePermissions;
 
+@RuntimePermissions
 public class MainActivity extends AppCompatActivity {
+    private int REQUEST_CODE_SCAN = 2;//相机扫描回调
+
+    private int REQUEST_CAMARA = 0;//相机权限
+    private int REQUEST_SD = 1;//存储权限
+
     private WebView webView;
     private WebSettings webSettings;
     private ProgressBar progressBar;
     private TextView processTitle;
-    private int REQUEST_CODE_SCAN = 2;
-    private int REQUEST_CODE_SCAN_GET = 3;//申请相机
+
     BroadcastReceiver connectionReceiver;//网络广播
     private int quitCount = 1;//5秒内点击2次推出
-    private boolean isLoadDisconn = false;//是否标识加载disconnect图片，这个必定成功
-    private boolean isFirstEnter = false;//是否第一次进入app
-    private String path = null;//文件存储地址
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,8 +70,6 @@ public class MainActivity extends AppCompatActivity {
         //去掉顶部标题栏
         supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
-        //版本信息存储地址，与app同生共死
-        path = this.getApplicationContext().getCacheDir().getAbsolutePath() + "/";
         //进度条
         progressBar = findViewById(R.id.progressbar);
         //进度条文本
@@ -77,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview);
         showBg();
         //核心设置
-        webView = Webset.webSet(MainActivity.this, webView, webChromeClient, webViewClient, MainActivity.this.getApplicationContext().getCacheDir().getAbsolutePath(), isFirstEnter);
+        webView = Webset.webSet(MainActivity.this, webView, webChromeClient, webViewClient, MainActivity.this.getApplicationContext().getCacheDir().getAbsolutePath(), true);
         webSettings = webView.getSettings();
         //启用交互
         webView.addJavascriptInterface(new JSInterface(), "Bridge");
@@ -89,32 +90,11 @@ public class MainActivity extends AppCompatActivity {
         //监听网络变化
         registerReceiver(getConnnectionReceiver(), intentFilter);
         startLoad(webView);
-        final Handler updateHandler = new Handler() {
-            @Override
-            public void handleMessage(Message msg) {
-                final Map map = (Map) msg.obj;
-                if (Integer.valueOf(map.get("type").toString()) == 1) {
-                    final String version = map.get("version").toString();
-                    Util.showNormalDialog(MainActivity.this, new UpdateInter() {
-                        @Override
-                        public void reload() {
-                            Util.modifyFile(path, version);
-                            webSettings.setCacheMode(webSettings.LOAD_NO_CACHE);
-                            processTitle.setText(R.string.update_title);
-                            startLoad(webView);
-                        }
-                    });
-                }
-            }
-        };
-        //检查更新
-        if (!isFirstEnter) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    //Util.checkVersion(MainActivity.this, webSettings, updateHandler, path);
-                }
-            }).start();
+        //小于是没有设置
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_SD);
+        } else {
+            MainActivityPermissionsDispatcher.needSDPmWithPermissionCheck(MainActivity.this);
         }
     }
 
@@ -133,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!mobNetInfo.isConnected() && !wifiNetInfo.isConnected()) {
                     Toast.makeText(MainActivity.this, R.string.net_disconnect, Toast.LENGTH_LONG).show();
                 } else {
-                        Toast.makeText(MainActivity.this, R.string.net_connect, Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, R.string.net_connect, Toast.LENGTH_LONG).show();
                 }
             }
         };
@@ -164,9 +144,6 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, R.string.msg_ewm, Toast.LENGTH_LONG).show();
                 }
             }
-        }
-        if (requestCode == REQUEST_CODE_SCAN_GET) {
-
         }
     }
 
@@ -248,16 +225,18 @@ public class MainActivity extends AppCompatActivity {
                     ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                     cm.setText(jsonObject.getString("data"));
                 } else if (type == 2) {
-                    //申请权限
-                    if (!checkPermissions()) {
-                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA}, REQUEST_CODE_SCAN);
-                        return;
+                    if (!lacksPermission(Manifest.permission.CAMERA)) {
+                        Intent intent = new Intent(MainActivity.this, CaptureActivity.class);
+                        startActivityForResult(intent, REQUEST_CODE_SCAN);
+                    } else {
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMARA);
+                        } else {
+                            MainActivityPermissionsDispatcher.needCamPmWithPermissionCheck(MainActivity.this);
+                        }
                     }
-                    Intent intent = new Intent(MainActivity.this, CaptureActivity.class);
-                    startActivityForResult(intent, REQUEST_CODE_SCAN);
                 } else if (type == 3) {
-                    // 不去掉背景，fps只有10左右。
-                    //webView.setBackgroundColor(Color.parseColor("#ffffff")); //ok 不会闪黑屏
+
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -275,13 +254,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE_SCAN) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        MainActivityPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults);
+        if (requestCode == REQUEST_CAMARA) {//相机
+            if (!lacksPermission(Manifest.permission.CAMERA)) {
                 Intent intent = new Intent(MainActivity.this, CaptureActivity.class);
                 startActivityForResult(intent, REQUEST_CODE_SCAN);
-            } else {
-                Toast.makeText(this, "请在应用管理中打开“相机”访问权限！", Toast.LENGTH_LONG).show();
-                finish();
+            }
+        }
+        if (requestCode == REQUEST_SD) {//sd卡权限
+            if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, R.string.PERMISSION_SD_INFO, Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -311,41 +293,11 @@ public class MainActivity extends AppCompatActivity {
         webView.onResume();
     }
 
-    private boolean checkPermissions() {
-        try {
-            if (Build.VERSION.SDK_INT < 23) {//一般android6以下会在安装时自动获取权限,但在小米机上，可能通过用户权限管理更改权限
-                return true;
-            } else {
-                if (getApplicationInfo().targetSdkVersion < 23) {
-                    //targetSdkVersion<23时 即便运行在android6及以上设备 ContextWrapper.checkSelfPermission和Context.checkSelfPermission失效
-                    //返回值始终为PERMISSION_GRANTED
-                    //此时必须使用PermissionChecker.checkSelfPermission
-                    if (PermissionChecker.checkPermission(this, Manifest.permission.CAMERA, Binder.getCallingPid(), Binder.getCallingUid(), getPackageName()) == PackageManager.PERMISSION_GRANTED) {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                } else {
-                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     private void clearBg() {
-        progressBar.setVisibility(View.INVISIBLE);
-        processTitle.setVisibility(View.INVISIBLE);
+        progressBar.setVisibility(View.GONE);
+        processTitle.setVisibility(View.GONE);
         webView.setBackgroundResource(0);
         webView.setBackgroundColor(Color.parseColor("#ffffff"));
-        if (isLoadDisconn) {
-            setReConn();
-        }
     }
 
     private void showBg() {
@@ -355,10 +307,87 @@ public class MainActivity extends AppCompatActivity {
         webView.setBackgroundResource(R.drawable.start);
     }
 
-    private void setReConn() {
-        progressBar.setVisibility(View.VISIBLE);
-        processTitle.setVisibility(View.VISIBLE);
-        processTitle.setText(R.string.wait_net);
-        processTitle.setTextColor(Color.BLACK);
+    //----------------------------------------------------------------------------------------------
+    //23下，禁止后都是返回0;只要声明就返回0,询问会有弹出框
+
+    // 单个权限
+    // @NeedsPermission(Manifest.permission.CAMERA)
+    // 多个权限
+    @NeedsPermission(Manifest.permission.CAMERA)
+    void needCamPm() {
+    }
+
+    // 被拒绝时：向用户说明为什么需要这些权限（可选）
+    @OnShowRationale(Manifest.permission.CAMERA)
+    void onShowCaRationale(final PermissionRequest request) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.PERMISSION_REQUIRE)
+                .setMessage(R.string.PERMISSION_SCAN)
+                .setPositiveButton(R.string.AGREEE, new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        request.proceed();
+                    }
+                })
+                .setNegativeButton(R.string.REJECT, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        request.cancel();
+                    }
+                })
+                .show();
+    }
+
+    // 用户拒绝授权回调（可选）
+    @OnPermissionDenied(Manifest.permission.CAMERA)
+    void onCamPmDenied() {
+        Toast.makeText(MainActivity.this, R.string.PERMISSION_SCAN, Toast.LENGTH_LONG).show();
+    }
+
+    // 用户勾选了“不再提醒”时调用（可选）
+    @OnNeverAskAgain(Manifest.permission.CAMERA)
+    void onCamNever() {
+        Toast.makeText(MainActivity.this, R.string.PERMISSION_SET_AGAIN2, Toast.LENGTH_LONG).show();
+    }
+
+    @NeedsPermission({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
+    void needSDPm() {
+    }
+
+    @OnShowRationale({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
+    void onShowSDPmRationale(final PermissionRequest request) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.PERMISSION_REQUIRE)
+                .setMessage(R.string.PERMISSION_SD_INFO)
+                .setPositiveButton(R.string.AGREEE, new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        request.proceed();
+                    }
+                })
+                .setNegativeButton(R.string.REJECT, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        request.cancel();
+                    }
+                })
+                .show();
+    }
+
+    @OnPermissionDenied({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
+    void onSDPmDenied() {
+        Toast.makeText(MainActivity.this, R.string.PERMISSION_SD_INFO, Toast.LENGTH_LONG).show();
+    }
+
+    @OnNeverAskAgain({Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE})
+    void onSDNever() {
+        Toast.makeText(MainActivity.this, R.string.PERMISSION_SET_AGAIN1, Toast.LENGTH_LONG).show();
+    }
+
+    public boolean lacksPermission(String permission) {
+        return ContextCompat.checkSelfPermission(this.getApplicationContext(), permission) ==
+                PackageManager.PERMISSION_DENIED;
     }
 }
