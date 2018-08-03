@@ -17,6 +17,7 @@ import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -49,8 +50,11 @@ import permissions.dispatcher.OnShowRationale;
 import permissions.dispatcher.PermissionRequest;
 import permissions.dispatcher.RuntimePermissions;
 
+/**
+ * 使用 FragmentActivity否则三星报错
+ */
 @RuntimePermissions
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends FragmentActivity {
     private int REQUEST_CODE_SCAN = 2;//相机扫描回调
 
     private int REQUEST_CAMARA = 0;//相机权限
@@ -68,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //去掉顶部标题栏
-        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+//        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
         //进度条
         progressBar = findViewById(R.id.progressbar);
