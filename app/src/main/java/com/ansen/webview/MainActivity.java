@@ -19,11 +19,9 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.Window;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -55,6 +53,7 @@ import permissions.dispatcher.RuntimePermissions;
  */
 @RuntimePermissions
 public class MainActivity extends FragmentActivity {
+    private static String TAG = "MainActivity";
     private int REQUEST_CODE_SCAN = 2;//相机扫描回调
 
     private int REQUEST_CAMARA = 0;//相机权限
@@ -67,6 +66,9 @@ public class MainActivity extends FragmentActivity {
 
     BroadcastReceiver connectionReceiver;//网络广播
     private int quitCount = 1;//5秒内点击2次推出
+
+    private int cjTypeCAMERA = 2;//app调用js 相机
+    private int cjTypeBack = 3;//app调用js 回退
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -136,14 +138,7 @@ public class MainActivity extends FragmentActivity {
                 }
                 if (bundle.getInt(CodeUtils.RESULT_TYPE) == CodeUtils.RESULT_SUCCESS) {
                     final String result = bundle.getString(CodeUtils.RESULT_STRING);
-                    JSONObject j = new JSONObject();
-                    String fun = "native.native.appCalljs('" + result + "')";
-                    this.webView.evaluateJavascript(fun, new ValueCallback<String>() {
-                        @Override
-                        public void onReceiveValue(String s) {
-
-                        }
-                    });
+                    this.callJs(cjTypeCAMERA, result);
                 } else if (bundle.getInt(CodeUtils.RESULT_TYPE) == CodeUtils.RESULT_FAILED) {
                     Toast.makeText(MainActivity.this, R.string.msg_ewm, Toast.LENGTH_LONG).show();
                 }
@@ -190,24 +185,40 @@ public class MainActivity extends FragmentActivity {
     };
 
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (quitCount == 1) {
-            quitCount++;
-            Toast.makeText(MainActivity.this, R.string.msg_quit, Toast.LENGTH_SHORT).show();
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(8000);//重置
-                        quitCount = 1;
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
-            return false;
+    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
+        JSONObject j = new JSONObject();
+        try {
+            j.put("type", cjTypeBack);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
-        return super.onKeyDown(keyCode, event);
+        String fun = "native.native.appCalljs('" + j.toString() + "')";
+        webView.evaluateJavascript(fun, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                if (null != s && Integer.parseInt(s)==3) {
+                    quitCount++;
+                    Toast.makeText(MainActivity.this, R.string.msg_quit, Toast.LENGTH_SHORT).show();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Thread.sleep(3000);//重置
+                                quitCount = 1;
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }).start();
+                }else{
+                    quitCount = 1;
+                }
+            }
+        });
+        if(quitCount!=1){
+            return super.onKeyDown(keyCode, event);
+        }
+        return false;
     }
 
     private final class JSInterface {
@@ -247,12 +258,30 @@ public class MainActivity extends FragmentActivity {
             }
 
         }
+    }
 
-        @JavascriptInterface
-        public void callJs(String data) {
-            webView.loadUrl("javascript:native.native.callJs('" + data + "')");
-            Log.d("callJs", data);
+    /**
+     * app调用外部方法
+     *
+     * @param type
+     * @param data
+     */
+    public void callJs(int type, String data) {
+        JSONObject j = new JSONObject();
+        try {
+            j.put("type", type);
+            j.put("data", data);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
+        Log.i(TAG, j.toString());
+        String fun = "native.native.appCalljs('" + j.toString() + "')";
+        webView.evaluateJavascript(fun, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                Log.i(TAG, s);
+            }
+        });
     }
 
     @Override
