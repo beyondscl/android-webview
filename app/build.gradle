@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 apply from: 'tinker-support.gradle'
+apply plugin: 'bugly'
+bugly {
+    appId = 'b8696a1087'
+    appKey = 'd4dd1c9b-7eed-415e-b697-f517a251503e'
+    debug = true
+}
 
 android {
     compileSdkVersion 27
@@ -8,14 +14,14 @@ android {
         applicationId "com.wwec.wallet"
         minSdkVersion 19
         targetSdkVersion 27
-        versionCode 20
-        versionName "2.0.1"
+        versionCode 25
+        versionName "2.2.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
         defaultConfig {
             ndk {
                 // 设置支持的SO库架构
-                abiFilters 'armeabi-v7a', 'arm64-v8a','armeabi' , 'x86',  'x86_64'
+                abiFilters 'armeabi-v7a', 'arm64-v8a','armeabi' , 'x86',  'x86_64','mips'
             }
         }
     }
