@@ -49,7 +49,7 @@ import permissions.dispatcher.PermissionRequest;
 import permissions.dispatcher.RuntimePermissions;
 
 /**
- * 使用 FragmentActivity否则三星报错
+ * 使用 FragmentActivity
  */
 @RuntimePermissions
 public class MainActivity extends FragmentActivity {
@@ -82,7 +82,6 @@ public class MainActivity extends FragmentActivity {
         processTitle = findViewById(R.id.processTitle);
         processTitle.setText(R.string.load_title);
         webView = findViewById(R.id.webview);
-        showBg();
         //核心设置
         webView = Webset.webSet(MainActivity.this, webView, webChromeClient, webViewClient, MainActivity.this.getApplicationContext().getCacheDir().getAbsolutePath(), true);
         webSettings = webView.getSettings();
@@ -116,7 +115,7 @@ public class MainActivity extends FragmentActivity {
                 NetworkInfo mobNetInfo = connectMgr.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
                 NetworkInfo wifiNetInfo = connectMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 
-                if (!mobNetInfo.isConnected() && !wifiNetInfo.isConnected()) {
+                if (mobNetInfo != null && !mobNetInfo.isConnected() && !wifiNetInfo.isConnected()) {
                     Toast.makeText(MainActivity.this, R.string.net_disconnect, Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(MainActivity.this, R.string.net_connect, Toast.LENGTH_LONG).show();
@@ -196,7 +195,7 @@ public class MainActivity extends FragmentActivity {
         webView.evaluateJavascript(fun, new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String s) {
-                if (null != s && Integer.parseInt(s)==3) {
+                if (null != s && Integer.parseInt(s) == 3) {
                     quitCount++;
                     Toast.makeText(MainActivity.this, R.string.msg_quit, Toast.LENGTH_SHORT).show();
                     new Thread(new Runnable() {
@@ -210,12 +209,12 @@ public class MainActivity extends FragmentActivity {
                             }
                         }
                     }).start();
-                }else{
+                } else {
                     quitCount = 1;
                 }
             }
         });
-        if(quitCount!=1){
+        if (quitCount != 1) {
             return super.onKeyDown(keyCode, event);
         }
         return false;
@@ -304,40 +303,56 @@ public class MainActivity extends FragmentActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-        webView.destroy();
-        webView = null;
         if (connectionReceiver != null) {
             unregisterReceiver(connectionReceiver);
         }
+        if (webView != null) {
+            webView.getSettings().setBuiltInZoomControls(true);
+            webView.setVisibility(View.GONE);
+            webView.destroy();
+            webView = null;
+        }
+        super.onDestroy();
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        webView.onPause();
-        webView.pauseTimers();
+        if (webView != null) {
+            webView.onPause();
+            webView.pauseTimers();
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        webView.resumeTimers();
-        webView.onResume();
+        if (webView != null) {
+            webView.resumeTimers();
+            webView.onResume();
+        }
     }
 
     private void clearBg() {
-        progressBar.setVisibility(View.GONE);
-        processTitle.setVisibility(View.GONE);
-        webView.setBackgroundResource(0);
-        webView.setBackgroundColor(Color.parseColor("#ffffff"));
+        try {
+            progressBar.setVisibility(View.GONE);
+            processTitle.setVisibility(View.GONE);
+            webView.setBackgroundResource(0);
+            webView.setBackgroundColor(Color.parseColor("#ffffff"));
+        } catch (Exception e) {
+
+        }
     }
 
     private void showBg() {
-        progressBar.setVisibility(View.VISIBLE);
-        processTitle.setVisibility(View.VISIBLE);
-        webView.setBackgroundColor(0);
-        webView.setBackgroundResource(R.drawable.start);
+        try {
+            progressBar.setVisibility(View.VISIBLE);
+            processTitle.setVisibility(View.VISIBLE);
+            webView.setBackgroundColor(0);
+            webView.setBackgroundResource(R.drawable.start);
+        } catch (Exception e) {
+
+        }
     }
 
     //----------------------------------------------------------------------------------------------
