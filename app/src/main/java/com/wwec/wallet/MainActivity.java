@@ -1,4 +1,4 @@
-package com.ansen.webview;
+package com.wwec.wallet;
 
 import android.Manifest;
 import android.annotation.TargetApi;
@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -76,6 +77,7 @@ public class MainActivity extends FragmentActivity {
         //去掉顶部标题栏
 //        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         //进度条
         progressBar = findViewById(R.id.progressbar);
         //进度条文本

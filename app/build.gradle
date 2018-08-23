@@ -2,8 +2,8 @@ apply plugin: 'com.android.application'
 apply from: 'tinker-support.gradle'
 apply plugin: 'bugly'
 bugly {
-    appId = 'b8696a1087'
-    appKey = 'd4dd1c9b-7eed-415e-b697-f517a251503e'
+    appId = 'd45ba567d6'
+    appKey = 'c6681c2d-4ee4-4550-897f-1ea8e7e252eb'
     debug = true
 }
 
@@ -18,20 +18,20 @@ android {
         versionName "2.2.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
-        defaultConfig {
-            ndk {
-                // 设置支持的SO库架构
-                abiFilters 'armeabi-v7a', 'arm64-v8a','armeabi' , 'x86',  'x86_64','mips'
-            }
-        }
+//        defaultConfig {
+//            ndk {
+//                // 设置支持的SO库架构
+//                abiFilters 'armeabi-v7a', 'arm64-v8a','armeabi' , 'x86',  'x86_64','mips'
+//            }
+//        }
     }
 
     signingConfigs {
         release {
-            keyAlias 'key0'
-            keyPassword 'Password.123'
-            storeFile file('C:\\Users\\admin\\Desktop\\apk-keystore\\wwec.jks')
-            storePassword 'Password.123'
+            keyAlias 'wweckey'
+            keyPassword 'Password123.'
+            storeFile file('/Users/cqyh/Desktop/jsk/wwec.jks')
+            storePassword 'Password123.'
         }
     }
 
@@ -53,7 +53,14 @@ android {
             signingConfig signingConfigs.release
         }
     }
+
+    lintOptions {
+        abortOnError false;
+        checkReleaseBuilds false
+    }
 }
+
+
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
