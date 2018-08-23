@@ -1,4 +1,4 @@
-package com.ansen.webview;
+package com.wwec.wallet;
 
 public interface UpdateInter {
     String versionUrl = "http://120.79.236.139/user/getVersion";//test

@@ -1,4 +1,4 @@
-package com.ansen.webview;
+package com.wwec.wallet;
 
 import android.app.Application;
 import android.content.Context;
@@ -14,7 +14,7 @@ public class WalletApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-        Bugly.init(getApplicationContext(), "b8696a1087", false);
+        Bugly.init(getApplicationContext(), "d45ba567d6", false);
         Beta.checkUpgrade(false, false);
         /**
          * true表示app启动自动初始化升级模块；

@@ -1,4 +1,4 @@
-package com.ansen.webview;
+package com.wwec.wallet;
 
 import android.content.Context;
 import android.os.Build;
